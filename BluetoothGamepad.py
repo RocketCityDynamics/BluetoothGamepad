@@ -1,0 +1,204 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# This file presents an interface for interacting with the Playstation 4 Controller
+# in Python. Simply plug your PS4 controller into your computer using USB and run this
+# script!
+#
+# NOTE: I assume in this script that the only joystick plugged in is the PS4 controller.
+#       if this is not the case, you will need to change the class accordingly.
+#
+# Copyright © 2015 Clay L. McLeod <clay.l.mcleod@gmail.com>
+#
+# Distributed under terms of the MIT license.
+
+##This file was customized for use with a scratch built tank based on the above.
+
+import os
+import pprint
+import pygame
+import RPi.GPIO as GPIO
+from time import sleep
+import sys
+
+
+#These are GPIO output addresses for each motor.
+
+in1 = 17 # R Motor GPIO address
+#GPIO 17 = wPi , BCM 8, phys addr = 18
+in2 = 27 # R Motor GPIO address
+#GPIO 27 = wPi 14, BCM 11, phys addr = 16
+in3 = 23 # L Motor GPIO address
+#GPIO 17 = wPi 0, BCM 17, phys addr = 11
+in4 = 24 # L Motor GPIO address
+#GPIO 27 = wPi 2, BCM 27, phys addr = 13
+en = 25 #L motor gpio for PWM (Doesn't actually need a PWM signal, just a "signal strength" basically.)
+#GPIO 8 = wPi  , BCM 
+en2 = 22 #R MOTOR GPIO for PWM (Doesn't actually need a PWM signal, just a "signal strength" basically.)
+#GPIO 22 = wPi 3, BCM 22, phys addr = 15
+#temp1=1
+
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(in1,GPIO.OUT)
+GPIO.setup(in2,GPIO.OUT)
+GPIO.setup(en,GPIO.OUT)
+GPIO.setup(in3,GPIO.OUT)
+GPIO.setup(in4,GPIO.OUT)
+GPIO.setup(en2,GPIO.OUT)
+GPIO.output(in1,GPIO.LOW)
+GPIO.output(in2,GPIO.LOW)
+GPIO.output(in3,GPIO.LOW)
+GPIO.output(in4,GPIO.LOW)
+p=GPIO.PWM(en,1000)
+p2=GPIO.PWM(en2,1000)
+
+#Motor power setup here. Just one speed for now.
+p.start(50)
+p2.start(55) #l motor is a little weaker on my setup.
+#Compensate with slightly more juice going to the weaker motor to help it drive straighter.
+#With a stronger battery, turn this power level down to around 25ish to keep the DC motor speeds controllable.
+
+
+class PS4Controller(object):
+    """Class representing the PS4 controller. Pretty straightforward functionality."""
+
+    controller = None
+    axis_data = None
+    button_data = None
+    hat_data = None
+
+    def init(self):
+        """Initialize the joystick components"""
+        
+        pygame.init()
+        pygame.joystick.init()
+        self.controller = pygame.joystick.Joystick(0)
+        self.controller.init()
+
+    def listen(self):
+        """Listen for events to happen"""
+        
+        if not self.axis_data:
+            self.axis_data = {}
+
+        if not self.button_data:
+            self.button_data = {}
+            for i in range(self.controller.get_numbuttons()):
+                self.button_data[i] = False
+
+        if not self.hat_data:
+            self.hat_data = {}
+            for i in range(self.controller.get_numhats()):
+                self.hat_data[i] = (0, 0)
+
+ #       while True:
+ #           for event in pygame.event.get():
+ #               if event.type == pygame.JOYAXISMOTION:
+ #                   self.axis_data[event.axis] = round(event.value,2)
+ #               elif event.type == pygame.JOYBUTTONDOWN:
+ #                   self.button_data[event.button] = True
+ #               elif event.type == pygame.JOYBUTTONUP:
+ #                   self.button_data[event.button] = False
+ #               elif event.type == pygame.JOYHATMOTION:
+ #                   self.hat_data[event.hat] = event.value
+
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.JOYAXISMOTION:
+                    if event.axis == 3:
+                        if event.value > 0:
+                            print("Pivot Right")
+                            GPIO.output(in1,GPIO.HIGH)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.HIGH)
+                            GPIO.output(in4,GPIO.LOW)
+                            x='z'
+                        if event.value < 0:
+                            print("Pivot Left")
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.HIGH)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.HIGH)
+                            x='z' #very important! Motor "runs away" without this code in every instruction!
+                    if event.axis == 1:
+                        if event.value > 0:
+                            print("Backwards")
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.HIGH)
+                            GPIO.output(in3,GPIO.HIGH)
+                            GPIO.output(in4,GPIO.LOW)
+                            x='z'
+                        if event.value < 0:
+                            print ("Forward")
+                            GPIO.output(in1,GPIO.HIGH)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.HIGH)
+                            x='z'        
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button == 0:
+                        print("'X' Button = Stop Drive Motors")
+                        GPIO.output(in1,GPIO.LOW)
+                        GPIO.output(in2,GPIO.LOW)
+                        GPIO.output(in3,GPIO.LOW)
+                        GPIO.output(in4,GPIO.LOW)
+                        x='z'
+                    if event.button == 1:
+                        print("'O' Button = Stop Drive Motors")
+                        GPIO.output(in1,GPIO.LOW)
+                        GPIO.output(in2,GPIO.LOW)
+                        GPIO.output(in3,GPIO.LOW)
+                        GPIO.output(in4,GPIO.LOW)
+                        x='z'
+                    if event.button == 2:
+                        print("'^' Button = Stop Drive Motors")
+                        GPIO.output(in1,GPIO.LOW)
+                        GPIO.output(in2,GPIO.LOW)
+                        GPIO.output(in3,GPIO.LOW)
+                        GPIO.output(in4,GPIO.LOW)
+                        x='z'
+                    if event.button == 3:
+                        print("'[]' Button = Stop Drive Motors")
+                        GPIO.output(in1,GPIO.LOW)
+                        GPIO.output(in2,GPIO.LOW)
+                        GPIO.output(in3,GPIO.LOW)
+                        GPIO.output(in4,GPIO.LOW)
+                        x='z'
+                    if event.button == 4:
+                        print("'L1' Button = Stop L drive Motor")
+                        GPIO.output(in1,GPIO.LOW)
+                        GPIO.output(in2,GPIO.LOW)
+                        x='z'
+                    if event.button == 5:
+                        print("'R1' Button = Stop L drive Motor")
+                        GPIO.output(in3,GPIO.LOW)
+                        GPIO.output(in4,GPIO.LOW)
+                        x='z'
+                elif event.type == pygame.JOYBUTTONUP:
+                    if event.button == 1:
+                        print ("he-yump")
+                elif event.type == pygame.JOYHATMOTION:
+                    if event.hat == 0:
+                        if event.value == (1, 0):
+                            print("right")
+                        if event.value == (-1, 0):
+                            print("left")
+                        if event.value == (0, 1):
+                            print("up")
+                        if event.value == (0, -1):
+                            print("down")
+
+                # Insert your code on what you would like to happen for each event here!
+                # In the current setup, I have the state simply printing out to the screen.
+                
+                #os.system('clear')
+                #pprint.pprint(self.button_data)
+                #pprint.pprint(self.axis_data)
+                #pprint.pprint(self.hat_data)
+
+
+if __name__ == "__main__":
+    ps4 = PS4Controller()
+    ps4.init()
+    ps4.listen()
