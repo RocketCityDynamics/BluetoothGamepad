@@ -54,8 +54,8 @@ p=GPIO.PWM(en,1000)
 p2=GPIO.PWM(en2,1000)
 
 #Motor power setup here. Just one speed for now.
-p.start(50)
-p2.start(55) #l motor is a little weaker on my setup.
+p.start(55)
+p2.start(65) #l motor is a little weaker on my setup.
 #Compensate with slightly more juice going to the weaker motor to help it drive straighter.
 #With a stronger battery, turn this power level down to around 25ish to keep the DC motor speeds controllable.
 
@@ -108,22 +108,28 @@ class PS4Controller(object):
                 if event.type == pygame.JOYAXISMOTION:
                     if event.axis == 3:
                         if event.value > 0:
-                            print("Pivot Right")
+                            print ("Pivot Right")
                             GPIO.output(in1,GPIO.HIGH)
                             GPIO.output(in2,GPIO.LOW)
                             GPIO.output(in3,GPIO.HIGH)
                             GPIO.output(in4,GPIO.LOW)
                             x='z'
                         if event.value < 0:
-                            print("Pivot Left")
+                            print ("Pivot Left")
                             GPIO.output(in1,GPIO.LOW)
                             GPIO.output(in2,GPIO.HIGH)
                             GPIO.output(in3,GPIO.LOW)
                             GPIO.output(in4,GPIO.HIGH)
                             x='z' #very important! Motor "runs away" without this code in every instruction!
+                        if event.value == 0:
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.LOW)
+
                     if event.axis == 1:
                         if event.value > 0:
-                            print("Backwards")
+                            print ("Backwards")
                             GPIO.output(in1,GPIO.LOW)
                             GPIO.output(in2,GPIO.HIGH)
                             GPIO.output(in3,GPIO.HIGH)
@@ -136,6 +142,13 @@ class PS4Controller(object):
                             GPIO.output(in3,GPIO.LOW)
                             GPIO.output(in4,GPIO.HIGH)
                             x='z'        
+                        if event.value == 0:
+                            print ("stopping motors")
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.LOW)
+
                 elif event.type == pygame.JOYBUTTONDOWN:
                     if event.button == 0:
                         print("'X' Button = Stop Drive Motors")
@@ -177,7 +190,12 @@ class PS4Controller(object):
                         x='z'
                 elif event.type == pygame.JOYBUTTONUP:
                     if event.button == 1:
-                        print ("he-yump")
+                        print ("stopping motors")
+                        GPIO.output(in1,GPIO.LOW)
+                        GPIO.output(in2,GPIO.LOW)
+                        GPIO.output(in3,GPIO.LOW)
+                        GPIO.output(in4,GPIO.LOW)
+
                 elif event.type == pygame.JOYHATMOTION:
                     if event.hat == 0:
                         if event.value == (1, 0):
