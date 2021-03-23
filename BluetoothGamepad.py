@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 #
 # This file presents an interface for interacting with the Playstation 4 Controller
-# in Python. Simply plug your PS4 controller into your computer using USB and run this
-# script!
+# in Python. Our configuration is married to bluetooth.
 #
 # NOTE: I assume in this script that the only joystick plugged in is the PS4 controller.
 #       if this is not the case, you will need to change the class accordingly.
 #
 # Copyright © 2015 Clay L. McLeod <clay.l.mcleod@gmail.com>
-#
+# This script is modified based on Clay's original framework. Functions were added to activate and deactivate certain GPIO pins, listed below.
 # Distributed under terms of the MIT license.
 
 ##This file was customized for use with a scratch built tank based on the above.
@@ -21,8 +20,7 @@ import RPi.GPIO as GPIO
 from time import sleep
 import sys
 
-
-#These are GPIO output addresses for each motor.
+#These are GPIO output addresses for each motor. If you use different pin locations on the Pi, then this will need to be adjusted.
 
 in1 = 17 # R Motor GPIO address
 #GPIO 17 = wPi , BCM 8, phys addr = 18
@@ -32,11 +30,10 @@ in3 = 23 # L Motor GPIO address
 #GPIO 17 = wPi 0, BCM 17, phys addr = 11
 in4 = 24 # L Motor GPIO address
 #GPIO 27 = wPi 2, BCM 27, phys addr = 13
-en = 25 #L motor gpio for PWM (Doesn't actually need a PWM signal, just a "signal strength" basically.)
-#GPIO 8 = wPi  , BCM 
-en2 = 22 #R MOTOR GPIO for PWM (Doesn't actually need a PWM signal, just a "signal strength" basically.)
+en = 25 #L motor gpio for PWM
+#GPIO 8 = wPi  , BCM
+en2 = 22 #R MOTOR GPIO for PWM
 #GPIO 22 = wPi 3, BCM 22, phys addr = 15
-#temp1=1
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -57,7 +54,8 @@ p2=GPIO.PWM(en2,1000)
 p.start(55)
 p2.start(65) #l motor is a little weaker on my setup.
 #Compensate with slightly more juice going to the weaker motor to help it drive straighter.
-#With a stronger battery, turn this power level down to around 25ish to keep the DC motor speeds controllable.
+#With a stronger battery, turn this power level down to around 35ish to keep the DC motor speeds controllable.
+#Changing these values to 100 constitutes "full send". You could break something very easily using full power depending on your setup.
 
 
 class PS4Controller(object):
@@ -70,7 +68,7 @@ class PS4Controller(object):
 
     def init(self):
         """Initialize the joystick components"""
-        
+
         pygame.init()
         pygame.joystick.init()
         self.controller = pygame.joystick.Joystick(0)
@@ -78,7 +76,7 @@ class PS4Controller(object):
 
     def listen(self):
         """Listen for events to happen"""
-        
+
         if not self.axis_data:
             self.axis_data = {}
 
@@ -92,17 +90,6 @@ class PS4Controller(object):
             for i in range(self.controller.get_numhats()):
                 self.hat_data[i] = (0, 0)
 
- #       while True:
- #           for event in pygame.event.get():
- #               if event.type == pygame.JOYAXISMOTION:
- #                   self.axis_data[event.axis] = round(event.value,2)
- #               elif event.type == pygame.JOYBUTTONDOWN:
- #                   self.button_data[event.button] = True
- #               elif event.type == pygame.JOYBUTTONUP:
- #                   self.button_data[event.button] = False
- #               elif event.type == pygame.JOYHATMOTION:
- #                   self.hat_data[event.hat] = event.value
-
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.JOYAXISMOTION:
@@ -113,15 +100,13 @@ class PS4Controller(object):
                             GPIO.output(in2,GPIO.LOW)
                             GPIO.output(in3,GPIO.HIGH)
                             GPIO.output(in4,GPIO.LOW)
-                            x='z'
                         if event.value < 0:
                             print ("Pivot Left")
                             GPIO.output(in1,GPIO.LOW)
                             GPIO.output(in2,GPIO.HIGH)
                             GPIO.output(in3,GPIO.LOW)
                             GPIO.output(in4,GPIO.HIGH)
-                            x='z' #very important! Motor "runs away" without this code in every instruction!
-                        if event.value == 0:
+                        if event.value == 0: #This function applies the brakes when the joysticks return to their base or '0' positions. Calibrate your joysticks if this value flickers from 0-1 making the motor jitter.
                             GPIO.output(in1,GPIO.LOW)
                             GPIO.output(in2,GPIO.LOW)
                             GPIO.output(in3,GPIO.LOW)
@@ -134,63 +119,56 @@ class PS4Controller(object):
                             GPIO.output(in2,GPIO.HIGH)
                             GPIO.output(in3,GPIO.HIGH)
                             GPIO.output(in4,GPIO.LOW)
-                            x='z'
                         if event.value < 0:
                             print ("Forward")
                             GPIO.output(in1,GPIO.HIGH)
                             GPIO.output(in2,GPIO.LOW)
                             GPIO.output(in3,GPIO.LOW)
                             GPIO.output(in4,GPIO.HIGH)
-                            x='z'        
                         if event.value == 0:
-                            print ("stopping motors")
+                            print ("stopping motors") #This function applies the brakes when the joysticks return to their base or '0' positions. Calibrate your joysticks if this value flickers from 0-1 causing motor jitters.
                             GPIO.output(in1,GPIO.LOW)
                             GPIO.output(in2,GPIO.LOW)
                             GPIO.output(in3,GPIO.LOW)
                             GPIO.output(in4,GPIO.LOW)
 
-                elif event.type == pygame.JOYBUTTONDOWN:
+                elif event.type == pygame.JOYBUTTONDOWN: 
+                    #the action buttons area all defaulted to braking. You can configure these to do custom commands if you wish. Braking by default made the most sense.
                     if event.button == 0:
                         print("'X' Button = Stop Drive Motors")
                         GPIO.output(in1,GPIO.LOW)
                         GPIO.output(in2,GPIO.LOW)
                         GPIO.output(in3,GPIO.LOW)
                         GPIO.output(in4,GPIO.LOW)
-                        x='z'
                     if event.button == 1:
                         print("'O' Button = Stop Drive Motors")
                         GPIO.output(in1,GPIO.LOW)
                         GPIO.output(in2,GPIO.LOW)
                         GPIO.output(in3,GPIO.LOW)
                         GPIO.output(in4,GPIO.LOW)
-                        x='z'
                     if event.button == 2:
                         print("'^' Button = Stop Drive Motors")
                         GPIO.output(in1,GPIO.LOW)
                         GPIO.output(in2,GPIO.LOW)
                         GPIO.output(in3,GPIO.LOW)
                         GPIO.output(in4,GPIO.LOW)
-                        x='z'
                     if event.button == 3:
                         print("'[]' Button = Stop Drive Motors")
                         GPIO.output(in1,GPIO.LOW)
                         GPIO.output(in2,GPIO.LOW)
                         GPIO.output(in3,GPIO.LOW)
                         GPIO.output(in4,GPIO.LOW)
-                        x='z'
                     if event.button == 4:
                         print("'L1' Button = Stop L drive Motor")
                         GPIO.output(in1,GPIO.LOW)
                         GPIO.output(in2,GPIO.LOW)
-                        x='z'
                     if event.button == 5:
                         print("'R1' Button = Stop L drive Motor")
                         GPIO.output(in3,GPIO.LOW)
                         GPIO.output(in4,GPIO.LOW)
-                        x='z'
                 elif event.type == pygame.JOYBUTTONUP:
                     if event.button == 1:
-                        print ("stopping motors")
+                        print ("stopping motors") #AUTOMATIC BRAKES
                         GPIO.output(in1,GPIO.LOW)
                         GPIO.output(in2,GPIO.LOW)
                         GPIO.output(in3,GPIO.LOW)
@@ -199,22 +177,41 @@ class PS4Controller(object):
                 elif event.type == pygame.JOYHATMOTION:
                     if event.hat == 0:
                         if event.value == (1, 0):
-                            print("right")
+                            print("pivot right with directional pad")
+                            GPIO.output(in1,GPIO.HIGH)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.HIGH)
+                            GPIO.output(in4,GPIO.LOW)
                         if event.value == (-1, 0):
-                            print("left")
+                            print("pivot left with directional pad")
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.HIGH)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.HIGH)
                         if event.value == (0, 1):
-                            print("up")
+                            print("move forward with directional pad")
+                            GPIO.output(in1,GPIO.HIGH)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.HIGH)
                         if event.value == (0, -1):
-                            print("down")
+                            print("move reverse with directional pad")
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.HIGH)
+                            GPIO.output(in3,GPIO.HIGH)
+                            GPIO.output(in4,GPIO.LOW)
+                        if event.value == (0, 0): #AUTOMATIC BRAKES @ '0' or center position!
+                            print("brakes applied. motors stopped.")
+                            GPIO.output(in1,GPIO.LOW)
+                            GPIO.output(in2,GPIO.LOW)
+                            GPIO.output(in3,GPIO.LOW)
+                            GPIO.output(in4,GPIO.LOW)
+
 
                 # Insert your code on what you would like to happen for each event here!
-                # In the current setup, I have the state simply printing out to the screen.
-                
-                #os.system('clear')
-                #pprint.pprint(self.button_data)
-                #pprint.pprint(self.axis_data)
-                #pprint.pprint(self.hat_data)
-
+                # In the current setup, the drive state is printing out to the screen while the motors are performing a function.
+                # Brakes are defaulted to activate pretty much everywhere for safety measures. If not, the motors can run away and continue running even after the script is stopped.
+                # Please do not change the braking code unless you know what you are doing or for some reason need them to keep running. 
 
 if __name__ == "__main__":
     ps4 = PS4Controller()
